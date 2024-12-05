@@ -57,5 +57,5 @@ refine_iters: 1
 # pretrained
 freeze_backbone: false
 freeze_language_backbone: false
-clip_pretrained: /PATH/TO/CLIP/MODEL
+clip_pretrained: /home/chris/Documents/PROJECTS/CLIP4STR/pretrained/clip/ViT-B-16.pt
 find_unused_parameters: true

@@ -6,4 +6,4 @@ model:
   img_size: [ 224, 224 ]   # [ height, width ]
   patch_size: [ 16, 16 ]    # [ height, width ]
 
-  clip_pretrained: /PUT/YOUR/PATH/HERE/pretrained/clip/ViT-B-16.pt
+  clip_pretrained: /home/chris/Documents/PROJECTS/CLIP4STR/pretrained/clip/ViT-B-16.pt

@@ -25,6 +25,8 @@ from pytorch_lightning.utilities import rank_zero_info
 
 from strhub.data.utils import CharsetAdapter
 
+import cv2
+import numpy as np
 
 def build_tree_dataset(root: Union[PurePath, str], *args, **kwargs):
     try:
@@ -129,7 +131,10 @@ class LmdbDataset(Dataset):
             imgbuf = txn.get(img_key)
         buf = io.BytesIO(imgbuf)
         img = Image.open(buf).convert('RGB')
-
+        
+        #opencvImage = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        #cv2.imwrite('/home/chris/Documents/image1.png', opencvImage)
+        
         if self.transform is not None:
             img = self.transform(img)
 

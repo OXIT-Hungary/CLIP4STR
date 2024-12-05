@@ -16,9 +16,9 @@
 #                     model.adapter_type=ladder_pruning model.block_ids=[1,3,5,7,9,11] \
 #                     model.prune_reduction=4
 
-python ../train.py +experiment=str_adapter model=str_adapter charset=94_full dataset=real \
+python ../train.py +experiment=str_adapter model=str_adapter charset=10_numbers dataset=real \
                     model.lr=8e-4 \
                     model.batch_size=512 \
-                    trainer.max_epochs=16 trainer.gpus=2 \
+                    trainer.max_epochs=16 trainer.gpus=1 \
                     model.adapter_type=ladder_pruning model.block_ids=[1,3,5,7,9,11] \
                     model.prune_reduction=8

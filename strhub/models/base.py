@@ -140,7 +140,7 @@ class BaseSystem(pl.LightningModule, ABC):
             preds, probs = self.tokenizer.decode(probs)
 
         for pred, prob, gt in zip(preds, probs, labels):
-            confidence += prob.prod().item()
+            confidence += prob.double().prod().item()           ###!!!!!!!!! ITT LETT BELENYÚVA !!!!!!!!!###
             # adapt for the test charset
             pred = self.charset_adapter(pred) if not clip_refine else pred
             # Follow ICDAR 2019 definition of N.E.D.
