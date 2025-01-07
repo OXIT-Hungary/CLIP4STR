@@ -23,8 +23,8 @@
 # export CUDA_VISIBLE_DEVICES=4,5,6,7
 python ../train.py +experiment=vl4str model=vl4str dataset=real \
                     data.root_dir=/home/chris/Documents/PROJECTS/CLIP4STR/dataset/ \
-                    trainer.max_epochs=11 trainer.gpus=1 \
-                    model.lr=8.4e-5 model.batch_size=256 \
+                    trainer.max_epochs=1 trainer.gpus=1 \
+                    model.lr=8.4e-5 model.batch_size=32 \
                     model.clip_pretrained=/home/chris/Documents/PROJECTS/CLIP4STR/pretrained/clip/ViT-B-16.pt \
                     trainer.accumulate_grad_batches=1
 

@@ -14,11 +14,11 @@
 ### Commands of Shuai to train a CLIP4STR-L model with OpenCLIP weights on RBU(6.5M)
 # export CUDA_VISIBLE_DEVICES=4,5,6,7
 python ../train.py +experiment=vl4str-large model=vl4str dataset=real \
-                    data.root_dir=/home/shuai/dataset/str_dataset_ub \
-                    model.lr=8.4e-5 model.batch_size=64  \
-                    trainer.accumulate_grad_batches=4 trainer.max_epochs=5 trainer.gpus=4 \
-                    trainer.val_check_interval=10000 \
-                    model.clip_pretrained=/home/shuai/pretrained/clip/OpenCLIP-ViT-L-14-DataComp-XL-s13B-b90K.bin
+                    data.root_dir=/home/chris/Documents/PROJECTS/CLIP4STR/dataset/ \
+                    model.lr=8.4e-5 model.batch_size=32  \
+                    trainer.accumulate_grad_batches=4 trainer.max_epochs=1 trainer.gpus=1 \
+                    trainer.val_check_interval=100 \
+                    model.clip_pretrained=/home/chris/Documents/PROJECTS/CLIP4STR/pretrained/clip/OpenCLIP-ViT-L-14-DataComp-XL-s13B-b90K.bin
 
 
 # loading checkpoint from clip/ViT-L-14.pt
