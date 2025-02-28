@@ -20,9 +20,42 @@ import torch
 
 from PIL import Image
 
+import numpy as np
+
 from strhub.data.module import SceneTextDataModule
 from strhub.models.utils import load_from_checkpoint, parse_model_args
 
+def main_init(checkpoint):
+    
+    model = load_from_checkpoint(checkpoint).eval().to('cuda')
+    
+    return model
+
+def main_eval(checkpoint, image, character_pos, **kwargs):
+    
+    model = load_from_checkpoint(checkpoint).eval().to('cuda')
+    
+    for pos in character_pos:
+        
+        #Cropping from original image
+        crop = image[round(pos[1]):round(pos[3]), round(pos[0]):round(pos[2])]
+        #crop = image.crop((pos[0], pos[1], pos[2], pos[3]))
+
+        #print(image.shape)
+        #image = image[0]  # Remove batch dimension
+        #print(image.shape)
+        #image = np.transpose(image, (1, 2, 0))  # Convert from (3, width, height) to (width, height, 3)
+        #print(image.shape)
+        _image = Image.fromarray(crop.astype('uint8'), 'RGB')
+        
+        img_transform = SceneTextDataModule.get_transform(model.hparams.img_size)
+
+        # Load image and prepare for input
+        _image = img_transform(_image).unsqueeze(0).to('cuda')
+        
+        p = model(_image).softmax(-1)
+        pred, p = model.tokenizer.decode(p)
+        print('number: ', pred[0])
 
 @torch.inference_mode()
 def main():
@@ -32,6 +65,7 @@ def main():
     parser.add_argument('--device', default='cuda')
     args, unknown = parser.parse_known_args()
     kwargs = parse_model_args(unknown)
+    print(kwargs)
     print(f'Additional keyword arguments: {kwargs}')
 
     model = load_from_checkpoint(args.checkpoint, **kwargs).eval().to(args.device)
