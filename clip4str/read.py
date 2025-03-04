@@ -35,6 +35,7 @@ def main_eval(checkpoint, image, character_pos, **kwargs):
     
     model = load_from_checkpoint(checkpoint).eval().to('cuda')
     
+    results = []
     for pos in character_pos:
         
         #Cropping from original image
@@ -55,7 +56,10 @@ def main_eval(checkpoint, image, character_pos, **kwargs):
         
         p = model(_image).softmax(-1)
         pred, p = model.tokenizer.decode(p)
-        print('number: ', pred[0])
+        #print('number: ', pred[0])
+        results.append(pred[0])
+        
+    return results
 
 @torch.inference_mode()
 def main():
