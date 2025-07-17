@@ -1,4 +1,5 @@
 misc/test_image
+tools/test_dataset/
 
 # Output directories
 outputs/
