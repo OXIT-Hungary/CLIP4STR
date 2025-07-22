@@ -216,6 +216,10 @@ def main_with_visualization():
     
     craft_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/craft/craft.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
     
+    device= "cuda"
+    checkpoint = "/home/chris/Documents/PROJECTS/CLIP4STR/output/vl4str_large_5epoch_v2_2025-01-07_10-33-57/checkpoints/last.ckpt"
+    clip4str = load_from_checkpoint(checkpoint).eval().to(device)
+    
     video_cap = cv2.VideoCapture("/home/chris/Documents/VIDEOS_FOR_ANNOTATION/CUT_VIDEOS/cut_5_0.mp4")
     
     while True:
@@ -230,37 +234,19 @@ def main_with_visualization():
         
         character_bboxes = forward_craft(craft_session, frame_original, boxes)
         
-        character_list = forward_clip4str(frame_original, boxes, character_bboxes)
+        character_list = forward_clip4str(clip4str, device, frame_original, boxes, character_bboxes)
         
         visualization(frame_original, boxes, character_bboxes)
 
-def forward_clip4str(frame_original, boxes, character_bboxes):
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('checkpoint', help="Model checkpoint (or 'pretrained=<model_id>')")
-    # parser.add_argument('--images_path', type=str, help='Images to read')
-    # parser.add_argument('--device', default='cuda')
-    # args, unknown = parser.parse_known_args()
-    # kwargs = parse_model_args(unknown)
-    # print('KWARGS: ',kwargs)
-    # print(f'Additional keyword arguments: {kwargs}')
-    
-    device= "cuda"
-    #images_path = "/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/misc/test_image/"
-    checkpoint = "/home/chris/Documents/PROJECTS/CLIP4STR/output/vl4str_large_5epoch_v2_2025-01-07_10-33-57/checkpoints/last.ckpt"
-
-    model = load_from_checkpoint(checkpoint).eval().to(device)
+def forward_clip4str(model, device, frame_original, boxes, character_bboxes):
     
     img_transform = SceneTextDataModule.get_transform(model.hparams.img_size)
-    
-    print(model.hparams.img_size)
-
-    #files = sorted([x for x in os.listdir(images_path) if x.endswith('png') or x.endswith('jpeg') or x.endswith('jpg')])
     
     outputs = []
 
     for idx, bbox in enumerate(boxes):
 
-        cropped_img = image[int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])]
+        cropped_img = frame_original[int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])]
 
         current_craft_result = character_bboxes[idx]
         if len(current_craft_result) !=0:
@@ -286,12 +272,15 @@ def forward_clip4str(frame_original, boxes, character_bboxes):
             # cv2.imshow("test", cropped_img)
 
             # Preprocess. Model expects a batch of images with shape: (B, C, H, W)
-            _img = img_transform(crop_img).unsqueeze(0)
+            _img = img_transform(_img).unsqueeze(0).to(device)
 
-            p = model(frame_original).softmax(-1)
+            p = model(_img).softmax(-1)
             pred, p = model.tokenizer.decode(p)
             print(pred[0])
+            
+            outputs.append(pred[0])
 
+    print("-------------")
     return outputs
 
     # for box in character_bboxes:
