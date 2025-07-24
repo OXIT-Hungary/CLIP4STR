@@ -41,8 +41,8 @@ def visualization(frame, boxes, character_bboxes):
         cv2.namedWindow("test", cv2.WINDOW_NORMAL)
         for idx in range(len(boxes)):
             cv2.rectangle(frame, (int(boxes[idx][0]),int(boxes[idx][3])), (int(boxes[idx][2]),int(boxes[idx][1])), (0, 255, 0) , 2)
-            if len(character_bboxes[idx]) != 0:
-                    cv2.rectangle(frame, (int(boxes[idx][0]),int(boxes[idx][3])), (int(boxes[idx][2]),int(boxes[idx][1])), (0, 0, 255) , 2)
+            # if len(character_bboxes[idx]) != 0:
+            #         cv2.rectangle(frame, (int(boxes[idx][0]),int(boxes[idx][3])), (int(boxes[idx][2]),int(boxes[idx][1])), (0, 0, 255) , 2)
             
         cv2.imshow("test", frame)
         
@@ -120,16 +120,15 @@ def get_craft_result( net, image, text_threshold, link_threshold, low_text, canv
         x = x.cuda()
 
     # forward pass
-    with torch.no_grad():
-        input_name = net.get_inputs()[0].name
-        output_names = [o.name for o in net.get_outputs()] 
-        
-        x_numpy = x.detach().cpu().numpy().astype(np.float32)
-        
-        outputs = net.run(output_names, {input_name: x_numpy})
-        
-        y = outputs[0]
-        feature = outputs[0]
+    input_name = net.get_inputs()[0].name
+    output_names = [o.name for o in net.get_outputs()] 
+    
+    x_numpy = x.detach().cpu().numpy().astype(np.float32)
+    
+    outputs = net.run(output_names, {input_name: x_numpy})
+    
+    y = outputs[0]
+    feature = outputs[1]
 
     # make score and link map
     score_text = y[0,:,:,0]
@@ -187,6 +186,7 @@ def forward_craft(onnx_session, frame, boxes) -> None:
         #print(bbox)
 
         if all(i >= 0 for i in bbox):
+            
             cropped_image = frame[int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])]
 
             _bboxes, polys, score_text = get_craft_result(onnx_session, cropped_image, text_threshold, link_threshold, low_text, canvas_size, mag_ratio, False, False, True, False, None)
@@ -202,43 +202,7 @@ def forward_craft(onnx_session, frame, boxes) -> None:
 
     return outputs
 
-def forward_clip4str(frame):
-    device= "cuda"
-    images_path = "/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/misc/test_image/"
-    checkpoint = "/home/chris/Documents/PROJECTS/CLIP4STR/output/vl4str_large_5epoch_v2_2025-01-07_10-33-57/checkpoints/last.ckpt"
-
-    
-    
-
-def main_with_visualization():
-    
-    rt_detr_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/rtdetrv2.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
-    
-    craft_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/craft/craft.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
-    
-    device= "cuda"
-    checkpoint = "/home/chris/Documents/PROJECTS/CLIP4STR/output/vl4str_large_5epoch_v2_2025-01-07_10-33-57/checkpoints/last.ckpt"
-    clip4str = load_from_checkpoint(checkpoint).eval().to(device)
-    
-    video_cap = cv2.VideoCapture("/home/chris/Documents/VIDEOS_FOR_ANNOTATION/CUT_VIDEOS/cut_5_0.mp4")
-    
-    while True:
-        has_frame, frame = video_cap.read()
-        if not has_frame:
-            break
-        
-        frame_original = frame.copy()
-        frame = torch.from_numpy(frame).unsqueeze(0).to('cuda')
-        
-        labels, boxes, scores = forward_rtdetr(rt_detr_session, frame, (1920, 1080))
-        
-        character_bboxes = forward_craft(craft_session, frame_original, boxes)
-        
-        character_list = forward_clip4str(clip4str, device, frame_original, boxes, character_bboxes)
-        
-        visualization(frame_original, boxes, character_bboxes)
-
-def forward_clip4str(model, device, frame_original, boxes, character_bboxes):
+def forward_clip4str(frame, model, device, frame_original, boxes, character_bboxes):
     
     img_transform = SceneTextDataModule.get_transform(model.hparams.img_size)
     
@@ -276,31 +240,56 @@ def forward_clip4str(model, device, frame_original, boxes, character_bboxes):
 
             p = model(_img).softmax(-1)
             pred, p = model.tokenizer.decode(p)
+            
             print(pred[0])
+            cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('test', 1920,1080)
+            cv2.rectangle(frame, (int(bbox[0]),int(bbox[3])), (int(bbox[2]),int(bbox[1])), (0, 0, 255) , 2)
+            
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            org = (int(bbox[0]),int(bbox[1])-5)
+            fontScale = 1
+            color = (0, 0, 255)
+            thickness = 2
+            cv2.putText(frame, f'{pred[0]}', org, font, fontScale, color, thickness, cv2.LINE_AA)
+            
+            cv2.imshow("test", frame)
+            cv2.waitKey(1)
             
             outputs.append(pred[0])
 
     print("-------------")
     return outputs
 
-    # for box in character_bboxes:
-    #     # Load image and prepare for input
-    #     #filename = os.path.join(images_path, fname)
-    #     #image = Image.open(filename).convert('RGB')
-    #     image = 
-    #     #print(image.shape)
-    #     image = img_transform(image).unsqueeze(0).to(device)
-    #     #print(image.shape)
+def main_with_visualization():
+    
+    rt_detr_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/rtdetrv2.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+    print(rt_detr_session.get_providers())  # Should display CUDAExecutionProvider
+    
+    craft_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/craft/craft.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+    print(craft_session.get_providers())  # Should display CUDAExecutionProvider
+
+    device= "cuda"
+    checkpoint = "/home/chris/Documents/PROJECTS/CLIP4STR/output/vl4str_large_5epoch_v2_2025-01-07_10-33-57/checkpoints/last.ckpt"
+    clip4str = load_from_checkpoint(checkpoint).eval().to(device)
+    
+    video_cap = cv2.VideoCapture("/home/chris/Documents/VIDEOS_FOR_ANNOTATION/CUT_VIDEOS/new_cut_0.mp4")
+    
+    while True:
+        has_frame, frame = video_cap.read()
+        if not has_frame:
+            break
         
-    #     #torch.onnx.export(model, image.to(args.device), "/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/scripts/clip4str.onnx", verbose=True)
-    #     #model.to_onnx("/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/scripts/clip4str.onnx", image, export_params=True)
-    #     #break
-
-    #     p = model(image).softmax(-1)
-    #     pred, p = model.tokenizer.decode(p)
-    #     #print(f'{fname}: {pred[0]}')
-    #     print(pred[0])
-
+        frame_original = frame.copy()
+        frame = torch.from_numpy(frame).unsqueeze(0).to('cuda')
+        
+        labels, boxes, scores = forward_rtdetr(rt_detr_session, frame, (1920, 1080))
+        
+        character_bboxes = forward_craft(craft_session, frame_original, boxes)
+        
+        character_list = forward_clip4str(frame_original, clip4str, device, frame_original, boxes, character_bboxes)
+        
+        #visualization(frame_original, boxes, character_bboxes)
 
 if __name__ == '__main__':
     #main()

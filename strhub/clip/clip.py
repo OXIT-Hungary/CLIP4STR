@@ -136,7 +136,7 @@ def load(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_a
 
     if "OpenCLIP" in model_path or "open_clip" in model_path or "apple" in model_path or "laion" in model_path:
         # take care of the pre-trained weights from OpenCLIP https://github.com/mlfoundations/open_clip
-        state_dict = torch.load(model_path, map_location="cpu")
+        state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
     else:
         try:
             with open(model_path, 'rb') as opened_file:
@@ -149,7 +149,7 @@ def load(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_a
                 warnings.warn(f"File {model_path} is not a JIT archive. Loading as a state dict instead")
                 jit = False
             # state_dict = torch.load(opened_file, map_location="cpu")
-            state_dict = torch.load(model_path, map_location="cpu")['model']
+            state_dict = torch.load(model_path, map_location="cpu", weights_only=True)['model']
 
     if not jit:
         model = build_model(state_dict or model.state_dict()).to(device)
