@@ -31,6 +31,7 @@ import time
 import misc.craft.imgproc as imgproc
 from torch.autograd import Variable
 import misc.craft.craft_utils as craft_utils
+import misc.clip4str.utils as clip4str_utils
 
 
 @torch.inference_mode()
@@ -238,8 +239,75 @@ def forward_clip4str(frame, model, device, frame_original, boxes, character_bbox
             # Preprocess. Model expects a batch of images with shape: (B, C, H, W)
             _img = img_transform(_img).unsqueeze(0).to(device)
 
+            # - ONLY FOR ONNX EXPORT -
+            # dynamic_axes = {
+            #     'image': {0: 'batch_size', 2: 'height', 3: 'width'}
+            # }
+            # torch.onnx.export(
+            #     model,
+            #     _img, 
+            #     "/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/misc/clip4str.onnx",
+            #     export_params=True,
+            #     opset_version=17,
+            #     do_constant_folding=True,
+            #     input_names=['image'],
+            #     output_names=['p'],
+            #     dynamic_axes=dynamic_axes,
+            #     verbose=True,
+            # )
+
             p = model(_img).softmax(-1)
             pred, p = model.tokenizer.decode(p)
+            
+            print(pred[0])
+            cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('test', 1920,1080)
+            cv2.rectangle(frame, (int(bbox[0]),int(bbox[3])), (int(bbox[2]),int(bbox[1])), (0, 0, 255) , 2)
+            
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            org = (int(bbox[0]),int(bbox[1])-5)
+            fontScale = 1
+            color = (0, 0, 255)
+            thickness = 2
+            cv2.putText(frame, f'{pred[0]}', org, font, fontScale, color, thickness, cv2.LINE_AA)
+            
+            cv2.imshow("test", frame)
+            cv2.waitKey(1)
+            
+            outputs.append(pred[0])
+
+    print("-------------")
+    return outputs
+
+def forward_clip4str_onnx(frame, onnx_session, tokenizer, device, frame_original, boxes, character_bboxes):
+    
+    img_transform = SceneTextDataModule.get_transform([224,224])
+    
+    outputs = []
+
+    for idx, bbox in enumerate(boxes):
+
+        cropped_img = frame_original[int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])]
+
+        current_craft_result = character_bboxes[idx]
+        if len(current_craft_result) !=0:
+
+            _img = Image.fromarray(cropped_img.astype('uint8'), 'RGB')
+
+            _img = img_transform(_img).unsqueeze(0).to(device)
+
+            input_name = onnx_session.get_inputs()[0].name
+            output_names = [o.name for o in onnx_session.get_outputs()] 
+            
+            x_numpy = _img.detach().cpu().numpy().astype(np.float32)
+            
+            outputs = onnx_session.run(output_names, {input_name: x_numpy})
+
+            _temp_output = outputs[0]
+            tensor_output = torch.from_numpy(_temp_output)
+
+            p = tensor_output.softmax(-1)
+            pred, p = tokenizer.decode(p)
             
             print(pred[0])
             cv2.namedWindow("test", cv2.WINDOW_NORMAL)
@@ -268,6 +336,11 @@ def main_with_visualization():
     
     craft_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/craft/craft.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
     print(craft_session.get_providers())  # Should display CUDAExecutionProvider
+    
+    clip4str_session = onnxruntime.InferenceSession("code/CLIP4STR/misc/clip4str.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+    charset = "0123456789"
+    tokenizer = clip4str_utils.Tokenizer(charset)
+    print(craft_session.get_providers())  # Should display CUDAExecutionProvider
 
     device= "cuda"
     checkpoint = "/home/chris/Documents/PROJECTS/CLIP4STR/output/vl4str_large_5epoch_v2_2025-01-07_10-33-57/checkpoints/last.ckpt"
@@ -287,7 +360,9 @@ def main_with_visualization():
         
         character_bboxes = forward_craft(craft_session, frame_original, boxes)
         
-        character_list = forward_clip4str(frame_original, clip4str, device, frame_original, boxes, character_bboxes)
+        #character_list = forward_clip4str(frame_original, clip4str, device, frame_original, boxes, character_bboxes)
+        
+        character_list = forward_clip4str_onnx(frame_original, clip4str_session, tokenizer, device, frame_original, boxes, character_bboxes)
         
         #visualization(frame_original, boxes, character_bboxes)
 

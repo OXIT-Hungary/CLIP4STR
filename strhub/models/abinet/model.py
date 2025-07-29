@@ -13,7 +13,9 @@ class Model(nn.Module):
         """ Greed decoder to obtain length from logit"""
         out = (logit.argmax(dim=-1) == self.null_label)
         abn = out.any(dim)
-        out = ((out.cumsum(dim) == 1) & out).max(dim)[1]
+        #out = ((out.cumsum(dim) == 1) & out).max(dim)[1]
+        out_numeric = out.int()
+        out = ((out_numeric.cumsum(dim) == 1) & out_numeric).max(dim)[1]
         out = out + 1  # additional end token
         out = torch.where(abn, out, out.new_tensor(logit.shape[1], device=out.device))
         return out
