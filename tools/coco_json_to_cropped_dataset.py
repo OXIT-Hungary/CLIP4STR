@@ -12,13 +12,13 @@ from tqdm import tqdm
 # =========================
 
 COCO_JSON = "/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/tools/training_dataset/annotations/instances_Train.json"
-IMAGES_ROOT = Path("/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/tools/training_dataset/images")
+IMAGES_ROOT = Path("/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/tools/training_dataset/images/Train/")
 
 OUTPUT_DIR = Path("/home/chris/Documents/PROJECTS/CLIP4STR/code/CLIP4STR/tools/training_dataset/output")
 OUTPUT_IMAGES = OUTPUT_DIR / "images"
 LABEL_FILE = OUTPUT_DIR / "labels.txt"
 
-BBOX_PADDING = 0.10   # optional extra margin around head
+BBOX_PADDING = 0.0   # optional extra margin around head
 
 # =========================
 
@@ -43,9 +43,9 @@ def resolve_image_path(file_name):
         return candidate
 
     # fallback recursive search (slow but safe)
-    matches = list(IMAGES_ROOT.rglob(p.name))
-    if matches:
-        return matches[0]
+    # matches = list(IMAGES_ROOT.rglob(p.name))
+    # if matches:
+    #     return matches[0]
 
     return None
 
@@ -88,12 +88,37 @@ def main():
 
     label_lines = []
     crop_index = 0
+    
+    last_visibility = {}
 
     for ann in tqdm(coco["annotations"]):
 
+        # keep last known visibility per head id
+        # (define this BEFORE the loop)
+        # last_visibility = {}
+
+        attrs = ann.get("attributes", {})
+
+        raw_visibility = str(attrs.get("NumberVisible", "")).strip().upper()
+
+        head_id = ann["id"]   # since you said IDs are stable across frames
+
+        if raw_visibility == "TRUE":
+            visible = True
+            last_visibility[head_id] = True
+
+        elif raw_visibility == "FALSE":
+            visible = False
+            last_visibility[head_id] = False
+
+        else:
+            # NOT_DEFINED → inherit last known state
+            visible = last_visibility.get(head_id, False)
+
         # ---- Filter only visible numbers ----
-        if not ann.get('attributes').get("NumberVisible").strip().lower() == "true":
+        if not visible:
             continue
+
 
         number = ann.get('attributes').get("PlayerNumber")
         if number is None:
@@ -124,7 +149,7 @@ def main():
 
         cv2.imwrite(str(out_path), crop)
 
-        label_lines.append(f"{filename} {number}")
+        label_lines.append(f"{filename} {int(number)}")
 
     with open(LABEL_FILE, "w") as f:
         f.write("\n".join(label_lines))
