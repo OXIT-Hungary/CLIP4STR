@@ -152,10 +152,11 @@ def main():
             confidence += res.confidence
             label_length += res.label_length
         all_total += total
-        accuracy = 100 * correct / total
-        mean_ned = 100 * (1 - ned / total)
-        mean_conf = 100 * confidence / total
-        mean_label_length = label_length / total
+        print(total, correct, ned, confidence, label_length)
+        accuracy = 100 * correct / total if total > 0 else 0
+        mean_ned = 100 * (1 - ned / total) if total > 0 else 0
+        mean_conf = 100 * confidence / total if total > 0 else 0
+        mean_label_length = label_length / total if total > 0 else 0
         results[name] = Result(name, total, accuracy, mean_ned, mean_conf, mean_label_length)
 
     result_groups = {

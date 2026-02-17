@@ -11,12 +11,12 @@
 ### Commands of Shuai to train a CLIP4STR-H model with OpenCLIP weights on RBU(6.5M)
 # export CUDA_VISIBLE_DEVICES=4,5,6,7
 python ../train.py +experiment=vl4str-huge model=vl4str dataset=real \
-                    data.root_dir=/home/shuai/dataset/str_dataset_ub \
-                    model.lr=8.4e-5 model.batch_size=32  \
-                    trainer.accumulate_grad_batches=8 trainer.max_epochs=4 trainer.gpus=4 \
-                    trainer.val_check_interval=10000 \
-                    model.clip_pretrained=/home/shuai/pretrained/clip/appleDFN5B-CLIP-ViT-H-14.bin
-                    # model.clip_pretrained=/home/shuai/pretrained/clip/OpenCLIP-ViT-H-14-laion2B-s32B-b79K.bin
+                    data.root_dir=/home/aitrain/Documents/Krisztian/CLIP4STR/dataset \
+                    model.lr=8.4e-5 model.batch_size=4  \
+                    trainer.accumulate_grad_batches=2 trainer.max_epochs=5 trainer.gpus=2 \
+                    trainer.val_check_interval=100 \
+                    #model.clip_pretrained=/home/shuai/pretrained/clip/appleDFN5B-CLIP-ViT-H-14.bin
+                    model.clip_pretrained=/home/aitrain/Documents/Krisztian/CLIP4STR/pretrained/clip/OpenCLIP-ViT-H-14-laion2B-s32B-b79K.bin
 
 # The dimension of the visual decoder is 1024.
 #    | Name                       | Type              | Params

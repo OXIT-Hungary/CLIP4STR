@@ -133,7 +133,7 @@ class LmdbDataset(Dataset):
         img = Image.open(buf).convert('RGB')
         
         #opencvImage = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        #cv2.imwrite('/home/chris/Documents/image1.png', opencvImage)
+        #cv2.imwrite('/home/aitrain/Documents/Krisztian/CLIP4STR/image1.png', opencvImage)
         
         if self.transform is not None:
             img = self.transform(img)

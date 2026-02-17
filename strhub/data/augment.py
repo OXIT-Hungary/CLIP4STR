@@ -73,37 +73,67 @@ def _level_to_arg(level, _hparams, max):
     level = max * level / auto_augment._LEVEL_DENOM
     return level,
 
+def brightness(img, factor, **_):
+    factor = 1.0 + (factor / auto_augment._LEVEL_DENOM) * 0.5
+    aug = iaa.MultiplyBrightness((1-factor, 1+factor))
+    return Image.fromarray(
+        aug(image=np.asarray(img)).astype(np.uint8)
+    )
+
+def contrast(img, factor, **_):
+    factor = 1.0 + (factor / auto_augment._LEVEL_DENOM) * 0.5
+    aug = iaa.LinearContrast((1-factor, 1+factor))
+    return Image.fromarray(
+        aug(image=np.asarray(img)).astype(np.uint8)
+    )
+
+def perspective_transform(img, scale, **_):
+    scale = scale / auto_augment._LEVEL_DENOM * 0.05
+    key = 'perspective_' + str(scale)
+    op = _get_op(key, lambda: iaa.PerspectiveTransform(scale=(0.0, scale)))
+    return Image.fromarray(op(image=np.asarray(img)))
+
+
 
 _RAND_TRANSFORMS = auto_augment._RAND_INCREASING_TRANSFORMS.copy()
 _RAND_TRANSFORMS.remove('SharpnessIncreasing')  # remove, interferes with *blur ops
 _RAND_TRANSFORMS.extend([
     'GaussianBlur',
-    # 'MotionBlur',
+    'MotionBlur',
     # 'GaussianNoise',
-    'PoissonNoise'
+    'PoissonNoise',
+    'PerspectiveTransform',
+    'Brightness',
+    'Contrast'
 ])
 auto_augment.LEVEL_TO_ARG.update({
     'GaussianBlur': partial(_level_to_arg, max=4),
     'MotionBlur': partial(_level_to_arg, max=20),
     'GaussianNoise': partial(_level_to_arg, max=0.1 * 255),
-    'PoissonNoise': partial(_level_to_arg, max=40)
+    'PoissonNoise': partial(_level_to_arg, max=40),
+    'Brightness': partial(_level_to_arg, max=10),
+    'Contrast': partial(_level_to_arg, max=10),
+    'PerspectiveTransform': partial(_level_to_arg, max=10)
 })
 auto_augment.NAME_TO_OP.update({
     'GaussianBlur': gaussian_blur,
     'MotionBlur': motion_blur,
     'GaussianNoise': gaussian_noise,
-    'PoissonNoise': poisson_noise
+    'PoissonNoise': poisson_noise,
+    'Brightness': brightness,
+    'Contrast': contrast,
+    'PerspectiveTransform': perspective_transform
 })
 
 
-def rand_augment_transform(magnitude=5, num_layers=3):
+def rand_augment_transform(magnitude=5, num_layers=2):
     # These are tuned for magnitude=5, which means that effective magnitudes are half of these values.
     hparams = {
-        'rotate_deg': 30,
-        'shear_x_pct': 0.9,
-        'shear_y_pct': 0.2,
-        'translate_x_pct': 0.10,
-        'translate_y_pct': 0.30
+        'rotate_deg': 10,
+        'shear_x_pct': 0.1,
+        'shear_y_pct': 0.1,
+        'translate_x_pct': 0.08,
+        'translate_y_pct': 0.08
     }
     ra_ops = auto_augment.rand_augment_ops(magnitude, hparams, transforms=_RAND_TRANSFORMS)
     # Supply weights to disable replacement in random selection (i.e. avoid applying the same op twice)
