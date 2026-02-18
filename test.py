@@ -26,6 +26,8 @@ import torch
 
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
+
 from strhub.data.module import SceneTextDataModule
 from strhub.models.utils import load_from_checkpoint, parse_model_args
 
@@ -151,13 +153,19 @@ def main():
             ned += res.ned
             confidence += res.confidence
             label_length += res.label_length
+            correct_gts = res.correct_gts
+
         all_total += total
-        print(total, correct, ned, confidence, label_length)
         accuracy = 100 * correct / total if total > 0 else 0
         mean_ned = 100 * (1 - ned / total) if total > 0 else 0
         mean_conf = 100 * confidence / total if total > 0 else 0
         mean_label_length = label_length / total if total > 0 else 0
         results[name] = Result(name, total, accuracy, mean_ned, mean_conf, mean_label_length)
+
+
+        plot_hist(labels, f"{total}- Test dataset size", "testsize_histogram.png", "Count of numbers")
+
+        plot_hist(correct_gts, f"{total}-{correct}", "prediction_histogram.png", "Number of correct predictions")
 
     result_groups = {
         'Benchmark (Subset)': SceneTextDataModule.TEST_BENCHMARK_SUB,
@@ -182,6 +190,37 @@ def main():
                 print_results_table([results[s] for s in subset], out)
                 print('\n', file=out)
             print("Time: Total {}s, Average {}ms. Total samples {}.".format(total_time, total_time * 1000.0 / all_total, all_total), file=out)
+
+def plot_hist(data, title, filename, ylabel):
+
+    data_int = []
+
+    for x in data:
+        try:
+            if hasattr(x, "item"):
+                x = x.item()
+            data_int.append(int(x))
+        except:
+            continue
+
+    if len(data_int) == 0:
+        return
+
+    plt.figure()
+
+    plt.hist(
+        data_int,
+        bins=[v - 0.5 for v in range(min(data_int), max(data_int) + 2)]
+    )
+
+    values = sorted(set(data_int))
+    plt.xticks(values)
+
+    plt.xlabel("Ground truth number")
+    plt.ylabel(ylabel)
+    plt.title(title)
+
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
 
 
 if __name__ == '__main__':
