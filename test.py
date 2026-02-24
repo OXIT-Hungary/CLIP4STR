@@ -26,7 +26,9 @@ import torch
 
 from tqdm import tqdm
 
+from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
+import numpy as np
 
 from strhub.data.module import SceneTextDataModule
 from strhub.models.utils import load_from_checkpoint, parse_model_args
@@ -137,6 +139,7 @@ def main():
         ned = 0
         confidence = 0
         label_length = 0
+        cf_matrix = []
         for imgs, labels in tqdm(iter(dataloader), desc=f'{name:>{max_width}}'):
             res = model.test_step((imgs.to(model.device), labels), -1,
                                     clip_model_path=args.clip_model_path,
@@ -154,6 +157,9 @@ def main():
             confidence += res.confidence
             label_length += res.label_length
             correct_gts = res.correct_gts
+            predict_pairs = res.predict_pairs
+
+            cf_matrix.extend(predict_pairs)
 
         all_total += total
         accuracy = 100 * correct / total if total > 0 else 0
@@ -162,9 +168,8 @@ def main():
         mean_label_length = label_length / total if total > 0 else 0
         results[name] = Result(name, total, accuracy, mean_ned, mean_conf, mean_label_length)
 
-
+        conf_matrix(cf_matrix)
         plot_hist(labels, f"{total}- Test dataset size", "testsize_histogram.png", "Count of numbers")
-
         plot_hist(correct_gts, f"{total}-{correct}", "prediction_histogram.png", "Number of correct predictions")
 
     result_groups = {
@@ -190,6 +195,57 @@ def main():
                 print_results_table([results[s] for s in subset], out)
                 print('\n', file=out)
             print("Time: Total {}s, Average {}ms. Total samples {}.".format(total_time, total_time * 1000.0 / all_total, all_total), file=out)
+
+def clean_confusion_data(data):
+    cleaned = []
+
+    for p, gt in data:
+        if p != '' and gt != '':
+            try:
+                cleaned.append((int(p), int(gt)))
+            except ValueError:
+                continue  # skip invalid entries
+
+    return cleaned
+
+
+def conf_matrix(data):
+
+    data = clean_confusion_data(data)
+    
+    # split
+    y_pred = np.array([p for p, gt in data], dtype=int)
+    y_true = np.array([gt for p, gt in data], dtype=int)
+
+    # IMPORTANT: numeric sorting (not string sorting)
+    labels = np.unique(np.concatenate([y_true, y_pred]))
+    labels.sort()
+
+    # build matrix
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+
+    # ---- PLOT ----
+    fig, ax = plt.subplots(figsize=(8,8))
+
+    im = ax.imshow(cm, origin='lower')
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+
+    ax.set_xticklabels(labels)
+    ax.set_yticklabels(labels)
+
+    ax.set_xlabel("Expected")
+    ax.set_ylabel("Predicted")
+
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, cm[i, j],
+                    ha="center", va="center")
+
+    plt.colorbar(im)
+    plt.tight_layout()
+    plt.savefig("confusion_matrix.png", dpi=300)
 
 def plot_hist(data, title, filename, ylabel):
 

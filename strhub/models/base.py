@@ -43,7 +43,7 @@ class BatchResult:
     loss: Tensor
     loss_numel: int
     correct_gts: list
-
+    predict_pairs: list
 
 class BaseSystem(pl.LightningModule, ABC):
 
@@ -141,6 +141,7 @@ class BaseSystem(pl.LightningModule, ABC):
             preds, probs = self.tokenizer.decode(probs)
 
         correct_gts = []
+        predict_pairs = []
         for pred, prob, gt in zip(preds, probs, labels):
             confidence += prob.double().prod().item()           ###!!!!!!!!! ITT LETT BELENYÚVA !!!!!!!!!###
             # adapt for the test charset
@@ -152,13 +153,14 @@ class BaseSystem(pl.LightningModule, ABC):
             if pred == gt:
                 correct += 1
                 correct_gts.append(gt)
+            predict_pairs.append((pred,gt))
             # else:
             #     # check for the wrong case
             #     print(total, pred, gt)
             total += 1
             label_length += len(pred)
 
-        return dict(output=BatchResult(total, correct, ned, confidence, label_length, loss, loss_numel, correct_gts))
+        return dict(output=BatchResult(total, correct, ned, confidence, label_length, loss, loss_numel, correct_gts, predict_pairs))
 
     @staticmethod
     def _aggregate_results(outputs: EPOCH_OUTPUT) -> Tuple[float, float, float]:

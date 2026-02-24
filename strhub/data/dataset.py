@@ -22,6 +22,7 @@ from pathlib import Path, PurePath
 from typing import Callable, Optional, Union
 from torch.utils.data import Dataset, ConcatDataset
 from pytorch_lightning.utilities import rank_zero_info
+import matplotlib.pyplot as plt
 
 from strhub.data.utils import CharsetAdapter
 
@@ -43,6 +44,35 @@ def build_tree_dataset(root: Union[PurePath, str], *args, **kwargs):
         dataset = LmdbDataset(ds_root, *args, **kwargs)
         rank_zero_info(f'\tlmdb:\t{ds_name}\tnum samples: {len(dataset)}')
         datasets.append(dataset)
+
+
+    merged_dataset = []
+    for dataset in datasets:
+        merged_dataset.extend(dataset.labels)
+
+    # Convert to integers
+    data_int = list(map(int, merged_dataset))
+
+    # Unique sorted values
+    values = sorted(set(data_int))
+
+    plt.figure()
+
+    # bins centered on integers
+    plt.hist(
+        data_int,
+        bins=[v - 0.5 for v in range(min(values), max(values) + 2)]
+    )
+
+    plt.xticks(values)
+
+    plt.xlabel("Value")
+    plt.ylabel("Frequency")
+    plt.title(f"Training dataset size - {len(merged_dataset)}")
+
+    plt.savefig(f"{len(merged_dataset)}_merged_datasets.png", dpi=300, bbox_inches="tight")
+
+
     return ConcatDataset(datasets)
 
 
@@ -66,6 +96,7 @@ class LmdbDataset(Dataset):
         self.num_samples = self._preprocess_labels(charset, remove_whitespace, normalize_unicode,
                                                    max_label_len, min_image_dim)
         # log.info('The number of samples is {}'.format(self.num_samples))
+
 
     def __del__(self):
         if self._env is not None:
@@ -114,6 +145,8 @@ class LmdbDataset(Dataset):
                         continue
                 self.labels.append(label)
                 self.filtered_index_list.append(index)
+
+
         return len(self.labels)
 
     def __len__(self):
